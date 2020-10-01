@@ -1,15 +1,63 @@
-import React from 'react';
+import React, { useRef, useContext } from 'react';
+import { useDrag, useDrop } from 'react-dnd';
+
+import BoardContext from '../Board/context';
 
 import { Container, Label } from './styles';
 
-export default function Card() {
+export default function Card({ data, index, listIndex }) {
+  const ref = useRef();
+  const { move } = useContext(BoardContext);
+
+  const [{ isDragging }, dragRef] = useDrag({
+    item: { type: 'CARD', index, listIndex },
+    collect: monitor => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  const [, dropRef] = useDrop({
+    accept: 'CARD',
+    hover(item, monitor){
+      const draggedListIndex = item.draggedListIndex;
+      const targetListIndex = listIndex; 
+
+      const draggedIndex = item.index;
+      const targetIndex = index;
+
+      if (draggedIndex === targetIndex && draggedListIndex === targetListIndex ) {
+        return;
+      }
+
+      const targetSize = ref.current.getBoundingClientRect();
+      const targetCenter = (targetSize.bottom - targetSize.top) / 2;
+
+      const draggedOffSet = monitor.getClientOffset();
+      const draggedTop = draggedOffSet.y - targetSize.top;
+
+      if (draggedIndex < targetIndex && draggedTop < targetCenter) {
+        return;
+      }
+      if (draggedIndex > targetIndex && draggedTop > targetCenter) {
+        return;
+      }
+
+      move(draggedListIndex, targetListIndex, draggedIndex, targetIndex);
+
+      item.index = targetIndex;
+      item.listIndex = targetListIndex;
+    }
+  })  
+
+  dragRef(dropRef(ref));
+
   return (
-    <Container>
+    <Container ref={dragRef} isDragging={isDragging}>
       <header>
-        <Label color="#7159c1" />
+        {data.labels.map(label => <Label key={label} color={label} />)}
       </header>
-      <p>Fazer migração completa de servidor</p>
-      <img src="https://avatars1.githubusercontent.com/u/63272258?s=400&u=1cca8064766a06062b74746db7a96023caa721bf&v=4" alt=""/>
+      <p>{data.content}</p>
+      { data.user && <img src={data.user} alt=""/> }
     </Container>
   );
 }
